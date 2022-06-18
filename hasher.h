@@ -15,6 +15,4 @@ public:
 
 private:
     static const size_t HashSize {1};
-
-    void reader(std::shared_ptr<std::fstream> input, const size_t blockSize); 
 };

@@ -2,22 +2,30 @@
 
 #include <iostream>
 #include <fstream>
-#include <filesystem>
 #include <memory>
 #include <atomic>
+#include <vector>
 #include "config.h"
+
+struct ReadBlock {
+	size_t idx{0};
+	std::vector<char> data;
+};
 
 class FileReader {
 	const size_t m_blockSize;
 	const std::string m_fileName;
-	const size_t m_fileSize;
-	const size_t m_totalBlocks;
-	std::atomic<size_t> m_blocksDone(0);
+	size_t m_fileSize;
+	size_t m_totalBlocks;
+	std::atomic<size_t> m_blocksDone;
+	std::fstream m_f;
 	
 public:
-	FileReader(std::shared_ptr<Config> config, const size_t blockSize);
+	FileReader(const std::string& filePath, const size_t blockSize);
+	void open();
 	size_t fileSize();
-	size_t blockNumAndInc();
+	size_t blockSize();
+	size_t getBlockNumAndInc();
 	bool hasNext();
-	void readNext();
+	std::shared_ptr<ReadBlock> readNext();
 };

@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_CXX_COMPILER g++)
 #set(CMAKE_C_COMPILER gcc)
 
-set(BOOST_ROOT "D:/Development/libs/boost_1_78_0/")
-#set(BOOST_ROOT "E:/Libs/boost_1_78_0/")
+#set(BOOST_ROOT "D:/Development/libs/boost_1_78_0/")
+set(BOOST_ROOT "E:/Libs/boost_1_78_0/")
  
 set (Boost_NO_SYSTEM_PATHS ON)
 set (Boost_USE_MULTITHREADED ON)
@@ -29,16 +29,10 @@ add_executable (multi_threads_file_hash
     "file_handler.h"
     "file_handler.cpp"
     "config.h"
-    "crc8.h"
-    "crc8.cpp"
     "hasher.cpp"
     "hasher.h"
-    
-    
     "thread_handler.cpp"
-    "thread_handler.h"
-    "timer.hpp"
-   "file_reader.h" "file_reader.cpp")
+    "thread_handler.h")
 target_link_libraries (multi_threads_file_hash ${Boost_LIBRARIES})
 
 #if (CMAKE_VERSION VERSION_GREATER 3.12)

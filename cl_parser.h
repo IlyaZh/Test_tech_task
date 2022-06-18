@@ -3,7 +3,6 @@
 #include <memory>
 #include <string>
 
-
 struct Config;
 
 class CommandLineParser {

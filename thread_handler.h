@@ -1,14 +1,13 @@
 #pragma once
 
 #include "file_handler.h"
+#include "file_reader.h"
 #include <memory>
 
-struct QueueWrapper {
-    QueueWrapper(size_t offset_) : offset(offset_) {}
-    size_t offset;
-};
-
 struct ThreadHandler {
-    void operator()(std::atomic<size_t>& n, const size_t total, const char* buffer, size_t blockSize, std::shared_ptr<FileHandler> out);
-    void handler(const size_t n, const char* buffer, size_t blockSize, std::shared_ptr<FileHandler> out);
+    void operator()(std::shared_ptr<FileHandler> reader, std::shared_ptr<FileHandler> out);
+private:
+    void handler(const size_t n, const char* buffer, size_t size, std::shared_ptr<FileHandler> out);
+    char crc8(const char* pcBlock, size_t len);
+    static const unsigned char Crc8Table[256];
 };

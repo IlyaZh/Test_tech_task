@@ -5,15 +5,17 @@
 
 int main(int argc, char* argv[])
 {
-	CommandLineParser clp;
-	if (auto config = clp.parseAndValidate(argc, argv)) {
-		try {
+	int retVal = -1;
+	try {
+		CommandLineParser clp;
+		if (auto config = clp.parseAndValidate(argc, argv)) {
 			Hasher hasher;
 			hasher.start(config);
-		} catch(std::exception& e) {
-			std::cerr << "[ERROR] " << e.what() << std::endl;
+			retVal = 0;
 		}
-		return 0;
 	}
-	return -1;
+	catch (std::exception& e) {
+		std::cerr << "[ERROR] " << e.what() << std::endl;
+	}
+	return retVal;
 }

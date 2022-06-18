@@ -11,7 +11,6 @@ using namespace boost::iostreams;
 FileHandler::FileHandler(const std::string& filePath, size_t blockSize, OpenMode mode) :
 	m_filePath(filePath),
 	m_blockSize(blockSize),
-	m_start(0),
 	m_fileSize(0),
 	m_file(std::make_unique<mapped_file>())
 {
@@ -26,11 +25,10 @@ FileHandler::FileHandler(const std::string& filePath, size_t blockSize, OpenMode
 		std::fstream f(m_filePath, std::ios::binary | std::ios::out);
 	}
 	// Заодно посчитаем размер файла
-	std::error_code errCode;
-	m_fileSize = std::filesystem::file_size(m_filePath, errCode);
-	if (errCode) {
-		m_fileSize = 0;
-	}
+	m_fileSize = std::filesystem::file_size(m_filePath);
+	m_totalBlocks = (m_fileSize % m_blockSize == 0)
+		? m_fileSize / m_blockSize
+		: m_fileSize / m_blockSize + 1;
 }
 
 FileHandler::~FileHandler() {
@@ -43,21 +41,16 @@ void FileHandler::open(size_t length) {
 
 	switch(m_mode) {
 		case mapped_file_base::mapmode::readonly:
-			// Пытаемся открыть на чтение весь файл,
-			// если не удаётся, то уменьшаем размер вдвое и пытаемся ещё раз.
-			// И так пока запрашиваемый размер больше или равен размеру блока
-			do {
-				try {
-					m_file->open(
-						m_filePath,
-						m_mode,
-						newLength
-					);
-				} catch(std::exception&e) {
-					
-				}
-				newLength /= 2;
-			} while(!m_file->is_open() && newLength >= m_blockSize);
+			try {
+				m_file->open(
+					m_filePath,
+					m_mode,
+					mapped_file::max_length,
+					0
+				);
+			} catch(std::exception&e) {
+				throw;
+			}
 		break;
 
 		case mapped_file_base::mapmode::readwrite:
@@ -69,7 +62,6 @@ void FileHandler::open(size_t length) {
 			m_file->open(params);
 		break;
 	}
-	
 	if(!m_file->is_open()) {
 		throw std::invalid_argument("Can't open file " + m_filePath);
 	}}
@@ -94,35 +86,25 @@ void FileHandler::write(char value, size_t pos) {
 size_t FileHandler::fileSize() const {
 	return m_fileSize;
 }
-//
-//bool FileHandler::isWholeFile() const {
-//	return (m_start+m_file->size() == m_fileSize);
-//}
-//
-//bool FileHandler::hasNextMap(size_t pos) const {
-//	return m_fileSize > (m_start+pos);
-//}
 
-void FileHandler::nextMap(size_t pos) {
-	if(m_start + pos >= m_fileSize) {
-		const auto newStart = m_start + (pos & ~mapped_file::alignment());
-		if(m_start != newStart) {
-			m_start = newStart;
-			m_file->close();
-			auto newSize = m_fileSize - m_start;
-			do {
-				try {
-					m_file->open(m_filePath, m_mode, newSize, m_start);
-				} catch(std::exception& e) {
+size_t FileHandler::blockSize()
+{
+	return m_blockSize;
+}
 
-				}
-				newSize /= 2;
-			} while(!m_file->is_open() && newSize >= m_blockSize);
-			if(!m_file->is_open()) {
-				throw std::invalid_argument("Can't open file " + m_filePath); 
-			}
-		}
-	} else {
-		throw std::overflow_error("File buffer wrong shift value " + m_filePath);
-	}
+bool FileHandler::hasNext()
+{
+	return m_totalBlocks > m_blocksDone.load();
+}
+
+std::shared_ptr<FileBlock> FileHandler::readNext()
+{
+	auto result = std::make_shared<FileBlock>();
+	const size_t n = m_blocksDone.fetch_add(1);
+	if (!m_file->is_open() && n < m_totalBlocks) return result;
+	result->n = n;
+	const size_t offset = blockSize() * result->n;
+	result->data = &m_file->const_data()[offset];
+	result->len = (m_file->size()-offset >= blockSize()) ? blockSize() : m_file->size() - offset;
+	return result;
 }

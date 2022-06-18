@@ -7,11 +7,18 @@
 #include <mutex>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/code_converter.hpp>
+#include "file_reader.h"
 
 typedef boost::iostreams::code_converter<boost::iostreams::mapped_file_source>  wmapped_file_source;
 typedef boost::iostreams::code_converter<boost::iostreams::mapped_file_sink>    wmapped_file_sink;
 
 struct Config;
+
+struct FileBlock {
+	const char* data{nullptr};
+	size_t len{0};
+	size_t n{0};
+};
 
 class FileHandler {
 public:
@@ -28,12 +35,10 @@ public:
 	void write(char value, size_t pos);
 
 	void open(size_t length = 0);
-	std::shared_ptr<char[]> read(size_t offset, size_t count);
-	//std::filebuf* get() const;
 	size_t fileSize() const;
-	//bool isWholeFile() const;
-	//bool hasNextMap(size_t pos) const;
-	void nextMap(size_t pos);
+	size_t blockSize();
+	bool hasNext();
+	std::shared_ptr<FileBlock> readNext();
 
 	FileHandler(const FileHandler& ref) = delete;
 	FileHandler& operator=(const FileHandler& ref) = delete;
@@ -42,11 +47,9 @@ public:
 private:
 	const std::string m_filePath;
 	size_t m_blockSize;
-	size_t m_start;
 	size_t m_fileSize;
-	// size_t m_bufferSize;
-	// const char* m_buffer;
-	// std::unique_ptr<std::fstream> m_fs;
+	size_t m_totalBlocks;
+	std::atomic<size_t> m_blocksDone;
 	std::mutex m_mtx;
 	std::unique_ptr<boost::iostreams::mapped_file> m_file;
 	boost::iostreams::mapped_file_base::mapmode m_mode;
